@@ -1,0 +1,15 @@
+{
+    "apps": [
+      {
+        "name": "telegram-bot-custom",
+        "script": "./src/index.ts",
+        "interpreter": "node",
+        "interpreter_args": "-r ts-node/register",
+        "exec_mode": "fork",
+        "instances": 1,
+        "autorestart": false,
+        "watch": false
+      }
+    ]
+  }
+  

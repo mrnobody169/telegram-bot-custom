@@ -4,8 +4,8 @@ import Bottleneck from "bottleneck";
 import { createClient } from "redis";
 
 // Configuration
-const TELEGRAM_BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"; // Replace with your bot token
-const CHAT_ID = "YOUR_CHAT_ID"; // Replace with your chat ID
+const TELEGRAM_BOT_TOKEN = "8075560315:AAEGhKXrEMC6xAi4O56Lkr0tc0XqMZ8xPFM";
+const CHAT_ID = "-1002679504089";
 const REDIS_URL = "redis://localhost:6379";
 const QUEUE_KEY = "telegram-messages";
 
@@ -19,17 +19,21 @@ redis.on("error", (err) => console.error("Redis Client Error:", err));
 // Rate limiter: 1 message/second
 const limiter = new Bottleneck({
   minTime: 1000, // 1000ms = 1 second
+  maxConcurrent: 1, // Only 1 message at a time
+  reservoir: 1, // Allow only 1 message initially
+  reservoirRefreshAmount: 1, // Refresh 1 message
+  reservoirRefreshInterval: 1000, // Every 1000ms
 });
 
 // Function to send Telegram message
 const sendTelegramMessage = async (message: string): Promise<void> => {
   try {
+    await new Promise((resolve) => setTimeout(resolve, 2000));
     await limiter.schedule(() =>
       bot.sendMessage(CHAT_ID, message, { parse_mode: "HTML" })
     );
-    console.log(`Message sent to Telegram: ${message}`);
-  } catch (error) {
-    console.error("Error sending Telegram message:", error);
+  } catch (error: any) {
+    console.log(error?.message);
   }
 };
 
@@ -47,11 +51,11 @@ const processQueue = async (): Promise<void> => {
         const messageStr = Buffer.isBuffer(message)
           ? message.toString("utf8")
           : message;
-        console.log(`Processing message: ${messageStr}`);
         await sendTelegramMessage(messageStr);
+        await new Promise((resolve) => setTimeout(resolve, 200));
       } else {
         // Wait briefly if queue is empty to avoid busy looping
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     } catch (error) {
       console.error("Error processing queue:", error);
@@ -80,7 +84,6 @@ app.post(
     try {
       // Push message to Redis queue (LPUSH)
       await redis.lPush(QUEUE_KEY, message);
-      console.log(`Message queued: ${message}`);
       res.status(200).json({ status: "Message queued" });
     } catch (error) {
       console.error("Error queuing message:", error);
